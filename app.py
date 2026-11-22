@@ -4,19 +4,19 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# Konfigurasi Halaman
+# Konfigurasi Halaman (Muncul sebagai judul tab browser & link preview WhatsApp)
 st.set_page_config(
-    page_title="Analisis Mekanika Batuan - Tugas 2", page_icon="🪨", layout="wide"
+    page_title="Diagram Mohr & Kriteria Keruntuhan", page_icon="🪨", layout="wide"
 )
 
-st.title("🪨 Analisis Mekanika Batuan: Lingkaran Mohr & Kriteria Keruntuhan")
+st.title("🪨 Diagram Mohr & Kriteria Keruntuhan Batuan")
 st.caption(
     "Aplikasi interaktif untuk analisis tegangan bidang 2D (Lingkaran Mohr) dan"
     " data uji triaksial (Mohr-Coulomb & Hoek-Brown)."
 )
 
 
-# Fungsi bantu untuk mengonversi figure Matplotlib ke buffer PNG (untuk tombol download)
+# Fungsi bantu untuk mengonversi figure Matplotlib ke buffer PNG (300 DPI)
 def fig_to_bytes(fig):
   buf = io.BytesIO()
   fig.savefig(buf, format="png", dpi=300, bbox_inches="tight")
@@ -24,14 +24,14 @@ def fig_to_bytes(fig):
   return buf
 
 
-# Navigasi Tab untuk Soal No. 1 dan No. 2
+# Navigasi Tab
 tab1, tab2 = st.tabs([
-    "📐 No. 1: Lingkaran Mohr 2D & Bidang AB",
-    "📊 No. 2: Uji Triaksial (Mohr-Coulomb & Hoek-Brown)",
+    "📐 Lingkaran Mohr 2D & Bidang AB",
+    "📊 Uji Triaksial (Mohr-Coulomb & Hoek-Brown)",
 ])
 
 # ==============================================================================
-# TAB 1: SOAL NO. 1 (LINGKARAN MOHR 2D)
+# TAB 1: LINGKARAN MOHR 2D
 # ==============================================================================
 with tab1:
   st.subheader("Analisis Tegangan Bidang 2D & Bidang Miring AB")
@@ -45,14 +45,18 @@ with tab1:
   with col_in1:
     st.markdown("#### Parameter Input")
     sx = st.number_input(
-        "Tegangan Normal Horizontal, σx (kN/m²)", value=52.7, step=1.0
+        "Tegangan Normal Horizontal, σx (kN/m²)", value=0.0, step=1.0
     )
     sy = st.number_input(
-        "Tegangan Normal Vertikal, σy (kN/m²)", value=75.7, step=1.0
+        "Tegangan Normal Vertikal, σy (kN/m²)", value=0.0, step=1.0
     )
     txy = st.number_input("Tegangan Geser, τxy (kN/m²)", value=34.1, step=1.0)
     theta_d = st.number_input(
-        "Sudut Bidang AB, θ (°)", value=45.0, min_value=0.0, max_value=180.0, step=1.0
+        "Sudut Bidang AB, θ (°)",
+        value=0.0,
+        min_value=0.0,
+        max_value=180.0,
+        step=1.0,
     )
     arah_rotasi = st.radio(
         "Arah Rotasi Normal Bidang AB dari Sumbu-X:",
@@ -183,14 +187,14 @@ with tab1:
     st.download_button(
         label="⬇️ Download Grafik Lingkaran Mohr (PNG)",
         data=fig_to_bytes(fig1),
-        file_name="lingkaran_mohr_no1.png",
+        file_name="lingkaran_mohr.png",
         mime="image/png",
     )
     plt.close(fig1)
 
 
 # ==============================================================================
-# TAB 2: SOAL NO. 2 (UJI TRIAKSIAL: MOHR-COULOMB & HOEK-BROWN)
+# TAB 2: UJI TRIAKSIAL (MOHR-COULOMB & HOEK-BROWN)
 # ==============================================================================
 with tab2:
   st.subheader("Kriteria Keruntuhan Mohr-Coulomb & Hoek-Brown (Uji Triaksial)")
@@ -206,8 +210,8 @@ with tab2:
     )
 
     default_data = pd.DataFrame({
-        "σ3f (MPa)": [0.0, 7.0, 12.0, 17.0, 25.0, 32.0],
-        "σ1f (MPa)": [27.0, 61.0, 77.0, 103.0, 130.0, 145.0],
+        "σ3f (MPa)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "σ1f (MPa)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     })
 
     edited_df = st.data_editor(
@@ -219,7 +223,7 @@ with tab2:
 
     s_val = st.number_input(
         "Parameter Batuan Utuh Hoek-Brown (s)",
-        value=1.0,
+        value=0.0,
         min_value=0.0,
         max_value=1.0,
         step=0.1,
@@ -227,7 +231,6 @@ with tab2:
     )
 
   with col_res2:
-    # Bersihkan baris kosong (NaN) jika user menambah baris baru yang belum diisi
     clean_df = edited_df.dropna(subset=["σ3f (MPa)", "σ1f (MPa)"])
 
     if len(clean_df) < 2:
@@ -247,7 +250,6 @@ with tab2:
       )
 
       sin_phi = (m_mc - 1.0) / (m_mc + 1.0)
-      # Pastikan nilai sin_phi berada dalam rentang valid [-1, 1]
       sin_phi_clipped = np.clip(sin_phi, -0.9999, 0.9999)
       phi_deg = np.degrees(np.arcsin(sin_phi_clipped))
       cohesion_c = b_mc / (2.0 * np.sqrt(max(m_mc, 1e-9)))
@@ -271,7 +273,6 @@ with tab2:
         mi = m_hb_slope / sigma_ci
         sigma_t = 0.5 * sigma_ci * (np.sqrt(mi**2 + 4 * s_val) - mi)
 
-        # Tampilkan Ringkasan Metrik
         res_c1, res_c2 = st.columns(2)
         with res_c1:
           st.markdown("##### 1. Kriteria Mohr-Coulomb")
@@ -293,11 +294,9 @@ with tab2:
               f"- **UCS (σci):** `{sigma_ci:.3f} MPa` | **mi:** `{mi:.3f}`"
           )
 
-        # Plotting Kedua Grafik
         fig2, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.2))
         x_line = np.linspace(0, max(s3) * 1.05, 100)
 
-        # Grafik 1: Mohr-Coulomb
         ax1.scatter(
             s3, s1, color="navy", s=55, zorder=5, label="Data Uji Triaksial"
         )
@@ -320,7 +319,6 @@ with tab2:
         ax1.grid(True, linestyle=":", alpha=0.7)
         ax1.legend(loc="upper left", fontsize=9.5)
 
-        # Grafik 2: Hoek-Brown
         ax2.scatter(
             s3,
             y_hb,
@@ -358,7 +356,7 @@ with tab2:
         st.download_button(
             label="⬇️ Download Grafik Uji Triaksial (PNG)",
             data=fig_to_bytes(fig2),
-            file_name="grafik_triaksial_no2.png",
+            file_name="grafik_triaksial.png",
             mime="image/png",
         )
         plt.close(fig2)
