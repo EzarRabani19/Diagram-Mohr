@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="Diagram Mohr & Kriteria Keruntuhan", page_icon="🪨", layout="wide"
 )
 
-st.title("🪨 Diagram Mohr & Kriteria Keruntuhan Batuan")
+st.title("Diagram Mohr & Kriteria Keruntuhan Batuan - By Ezar")
 st.caption(
     "Aplikasi interaktif untuk analisis tegangan bidang 2D (Lingkaran Mohr) dan"
     " data uji triaksial (Mohr-Coulomb & Hoek-Brown)."
