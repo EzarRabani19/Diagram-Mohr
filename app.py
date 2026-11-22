@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# Konfigurasi Halaman (Muncul sebagai judul tab browser & link preview WhatsApp)
+# Konfigurasi Halaman
 st.set_page_config(
     page_title="Diagram Mohr & Kriteria Keruntuhan", page_icon="🪨", layout="wide"
 )
@@ -16,7 +16,7 @@ st.caption(
 )
 
 
-# Fungsi bantu untuk mengonversi figure Matplotlib ke buffer PNG (300 DPI)
+# Fungsi bantu konversi figure Matplotlib ke PNG (300 DPI)
 def fig_to_bytes(fig):
   buf = io.BytesIO()
   fig.savefig(buf, format="png", dpi=300, bbox_inches="tight")
@@ -153,62 +153,4 @@ with tab1:
         ha="center",
     )
 
-    ax.scatter([sx, sy], [tau_X, tau_Y], color="green", zorder=5)
-    ax.text(sx + 1.5, tau_X - 2, f"X ({sx}, {tau_X})", fontsize=9, color="green")
-    ax.text(
-        sy + 1.5, tau_Y + 1.5, f"Y ({sy}, {tau_Y})", fontsize=9, color="green"
-    )
-
-    ax.scatter([sigma_n], [tau_n], color="red", s=60, zorder=6)
-    ax.text(
-        sigma_n + 2,
-        tau_n + 2,
-        f"Bidang AB\n(σ={sigma_n:.2f}, τ={tau_n:.2f})",
-        fontsize=9.5,
-        fontweight="bold",
-        color="red",
-    )
-
-    ax.scatter([sigma_1_prin, sigma_3_prin], [0, 0], color="purple", zorder=5)
-    ax.text(
-        sigma_1_prin + 1.5,
-        1.5,
-        f"σ1={sigma_1_prin:.1f}",
-        fontsize=9,
-        color="purple",
-    )
-    ax.text(
-        sigma_3_prin - 12,
-        1.5,
-        f"σ3={sigma_3_prin:.1f}",
-        fontsize=9,
-        color="purple",
-    )
-
-    ax.set_aspect("equal", adjustable="box")
-    plot_r = max(R, 10.0)
-    ax.set_xlim(min(-15, sigma_3_prin - 15), max(25, sigma_1_prin + 22))
-    ax.set_ylim(-plot_r - 15, plot_r + 15)
-    ax.grid(True, linestyle=":", alpha=0.7)
-    ax.set_xlabel("Tegangan Normal, σ (kN/m²)", fontsize=11, fontweight="bold")
-    ax.set_ylabel(
-        "Tegangan Geser, τ (kN/m²) [CCW +]", fontsize=11, fontweight="bold"
-    )
-    ax.set_title(
-        "Analisis Lingkaran Mohr 2D & Bidang AB", fontsize=13, fontweight="bold"
-    )
-    ax.legend(loc="upper left", fontsize=9)
-    plt.tight_layout()
-
-    st.pyplot(fig1)
-    st.download_button(
-        label="⬇️ Download Grafik Lingkaran Mohr (PNG)",
-        data=fig_to_bytes(fig1),
-        file_name="lingkaran_mohr.png",
-        mime="image/png",
-    )
-    plt.close(fig1)
-
-
-# ==============================================================================
-# TAB 2: UJI TRIA
+    ax.scatter([sx, sy], [tau_X, tau_
