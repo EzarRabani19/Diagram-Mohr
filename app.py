@@ -50,7 +50,7 @@ with tab1:
     sy = st.number_input(
         "Tegangan Normal Vertikal, σy (kN/m²)", value=0.0, step=1.0
     )
-    txy = st.number_input("Tegangan Geser, τxy (kN/m²)", value=34.1, step=1.0)
+    txy = st.number_input("Tegangan Geser, τxy (kN/m²)", value=0.0, step=1.0)
     theta_d = st.number_input(
         "Sudut Bidang AB, θ (°)",
         value=0.0,
