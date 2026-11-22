@@ -24,6 +24,21 @@ def fig_to_bytes(fig):
   return buf
 
 
+# Fungsi regresi linear analitik (bebas error SVD / LinAlgError)
+def linear_regression_exact(x, y):
+  x_mean = np.mean(x)
+  y_mean = np.mean(y)
+  denom = np.sum((x - x_mean) ** 2)
+  if denom == 0:
+    return 0.0, y_mean, 0.0
+  slope = np.sum((x - x_mean) * (y - y_mean)) / denom
+  intercept = y_mean - slope * x_mean
+  y_pred = slope * x + intercept
+  ss_tot = np.sum((y - y_mean) ** 2)
+  r2 = 1.0 - (np.sum((y - y_pred) ** 2) / ss_tot) if ss_tot > 0 else 0.0
+  return slope, intercept, r2
+
+
 # Navigasi Tab
 tab1, tab2 = st.tabs([
     "📐 Lingkaran Mohr 2D & Bidang AB",
@@ -128,10 +143,11 @@ with tab1:
         label=f"Bidang AB (2θ = {2 * theta_d:.0f}°)",
     )
 
+    offset_y = max(R * 0.1, 1.5)
     ax.scatter([sigma_avg], [0], color="black", zorder=5)
     ax.text(
         sigma_avg,
-        -R * 0.1,
+        -offset_y,
         f"C ({sigma_avg:.1f}, 0)",
         fontsize=9,
         ha="center",
@@ -170,8 +186,9 @@ with tab1:
     )
 
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(min(0, sigma_3_prin - 15), sigma_1_prin + 22)
-    ax.set_ylim(-R - 15, R + 15)
+    plot_r = max(R, 10.0)
+    ax.set_xlim(min(-15, sigma_3_prin - 15), max(25, sigma_1_prin + 22))
+    ax.set_ylim(-plot_r - 15, plot_r + 15)
     ax.grid(True, linestyle=":", alpha=0.7)
     ax.set_xlabel("Tegangan Normal, σ (kN/m²)", fontsize=11, fontweight="bold")
     ax.set_ylabel(
@@ -194,169 +211,4 @@ with tab1:
 
 
 # ==============================================================================
-# TAB 2: UJI TRIAKSIAL (MOHR-COULOMB & HOEK-BROWN)
-# ==============================================================================
-with tab2:
-  st.subheader("Kriteria Keruntuhan Mohr-Coulomb & Hoek-Brown (Uji Triaksial)")
-
-  col_data2, col_res2 = st.columns([1, 2], gap="large")
-
-  with col_data2:
-    st.markdown("#### Tabel Data Uji Triaksial")
-    st.caption(
-        "Klik sel untuk mengubah angka, klik tombol **+** di bawah tabel untuk"
-        " menambah baris, atau centang baris di kiri lalu tekan ikon tong"
-        " sampah untuk menghapus."
-    )
-
-    default_data = pd.DataFrame({
-        "σ3f (MPa)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        "σ1f (MPa)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    })
-
-    edited_df = st.data_editor(
-        default_data,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="triaxial_editor",
-    )
-
-    s_val = st.number_input(
-        "Parameter Batuan Utuh Hoek-Brown (s)",
-        value=0.0,
-        min_value=0.0,
-        max_value=1.0,
-        step=0.1,
-        help="Untuk sampel core batuan utuh (intact rock), nilai default s = 1.0",
-    )
-
-  with col_res2:
-    clean_df = edited_df.dropna(subset=["σ3f (MPa)", "σ1f (MPa)"])
-
-    if len(clean_df) < 2:
-      st.warning(
-          "Masukkan minimal 2 titik data uji triaksial yang valid untuk"
-          " menghitung regresi linear."
-      )
-    else:
-      s3 = clean_df["σ3f (MPa)"].to_numpy(dtype=float)
-      s1 = clean_df["σ1f (MPa)"].to_numpy(dtype=float)
-
-      # --- A. Mohr-Coulomb ---
-      m_mc, b_mc = np.polyfit(s3, s1, 1)
-      s1_pred = m_mc * s3 + b_mc
-      r2_mc = 1 - (
-          np.sum((s1 - s1_pred) ** 2) / np.sum((s1 - np.mean(s1)) ** 2)
-      )
-
-      sin_phi = (m_mc - 1.0) / (m_mc + 1.0)
-      sin_phi_clipped = np.clip(sin_phi, -0.9999, 0.9999)
-      phi_deg = np.degrees(np.arcsin(sin_phi_clipped))
-      cohesion_c = b_mc / (2.0 * np.sqrt(max(m_mc, 1e-9)))
-
-      # --- B. Hoek-Brown ---
-      y_hb = (s1 - s3) ** 2
-      m_hb_slope, b_hb_intercept = np.polyfit(s3, y_hb, 1)
-      y_hb_pred = m_hb_slope * s3 + b_hb_intercept
-      r2_hb = 1 - (
-          np.sum((y_hb - y_hb_pred) ** 2)
-          / np.sum((y_hb - np.mean(y_hb)) ** 2)
-      )
-
-      if b_hb_intercept <= 0 or s_val <= 0:
-        st.error(
-            "Intercept regresi Hoek-Brown bernilai negatif/nol sehingga akar"
-            " kuadrat σci tidak terdefinisi. Periksa kembali data input."
-        )
-      else:
-        sigma_ci = np.sqrt(b_hb_intercept / s_val)
-        mi = m_hb_slope / sigma_ci
-        sigma_t = 0.5 * sigma_ci * (np.sqrt(mi**2 + 4 * s_val) - mi)
-
-        res_c1, res_c2 = st.columns(2)
-        with res_c1:
-          st.markdown("##### 1. Kriteria Mohr-Coulomb")
-          st.info(
-              f"**Persamaan:** `σ1f = {m_mc:.4f} σ3f + {b_mc:.4f}`\n\n"
-              f"**Koefisien Determinasi (R²):** `{r2_mc:.4f}`\n\n"
-              f"- **Sudut Geser Dalam (φ):** `{phi_deg:.3f}°`\n"
-              f"- **Kohesi (c):** `{cohesion_c:.3f} MPa`"
-          )
-
-        with res_c2:
-          st.markdown("##### 2. Kriteria Hoek-Brown")
-          st.success(
-              f"**Persamaan:** `(σ1f - σ3f)² = {m_hb_slope:.4f} σ3f +"
-              f" {b_hb_intercept:.4f}`\n\n"
-              f"**Koefisien Determinasi (R²):** `{r2_hb:.4f}`\n\n"
-              f"- **Kuat Tarik (σt):** `{sigma_t:.3f} MPa` *(tarik:"
-              f" -{sigma_t:.3f} MPa)*\n"
-              f"- **UCS (σci):** `{sigma_ci:.3f} MPa` | **mi:** `{mi:.3f}`"
-          )
-
-        fig2, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.2))
-        x_line = np.linspace(0, max(s3) * 1.05, 100)
-
-        ax1.scatter(
-            s3, s1, color="navy", s=55, zorder=5, label="Data Uji Triaksial"
-        )
-        ax1.plot(
-            x_line,
-            m_mc * x_line + b_mc,
-            "r--",
-            linewidth=2,
-            label=f"y = {m_mc:.2f}x + {b_mc:.2f}\nR² = {r2_mc:.4f}",
-        )
-        ax1.set_title(
-            "Grafik Mohr-Coulomb: σ1f vs σ3f", fontsize=11.5, fontweight="bold"
-        )
-        ax1.set_xlabel(
-            "Tegangan Terkecil, σ3f (MPa)", fontsize=10, fontweight="bold"
-        )
-        ax1.set_ylabel(
-            "Tegangan Terbesar, σ1f (MPa)", fontsize=10, fontweight="bold"
-        )
-        ax1.grid(True, linestyle=":", alpha=0.7)
-        ax1.legend(loc="upper left", fontsize=9.5)
-
-        ax2.scatter(
-            s3,
-            y_hb,
-            color="darkgreen",
-            s=55,
-            zorder=5,
-            label="Data Transformasi HB",
-        )
-        ax2.plot(
-            x_line,
-            m_hb_slope * x_line + b_hb_intercept,
-            "darkorange",
-            linestyle="--",
-            linewidth=2,
-            label=(
-                f"y = {m_hb_slope:.2f}x + {b_hb_intercept:.2f}\nR² ="
-                f" {r2_hb:.4f}"
-            ),
-        )
-        ax2.set_title(
-            "Grafik Hoek-Brown: (σ1f - σ3f)² vs σ3f",
-            fontsize=11.5,
-            fontweight="bold",
-        )
-        ax2.set_xlabel(
-            "Tegangan Terkecil, σ3f (MPa)", fontsize=10, fontweight="bold"
-        )
-        ax2.set_ylabel("(σ1f - σ3f)² (MPa²)", fontsize=10, fontweight="bold")
-        ax2.grid(True, linestyle=":", alpha=0.7)
-        ax2.legend(loc="upper left", fontsize=9.5)
-
-        plt.tight_layout()
-        st.pyplot(fig2)
-
-        st.download_button(
-            label="⬇️ Download Grafik Uji Triaksial (PNG)",
-            data=fig_to_bytes(fig2),
-            file_name="grafik_triaksial.png",
-            mime="image/png",
-        )
-        plt.close(fig2)
+# TAB 2: UJI TRIA
